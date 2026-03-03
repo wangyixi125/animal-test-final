@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>内在原型：动物人格深度测评</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root {
+    --lion-color: #d4a017;
+    --tiger-color: #c0392b;
+    --koala-color: #27ae60;
+    --owl-color: #2980b9;
+    --bg-dark: #1a1a2e;
+}
+
+body { 
+    font-family: 'PingFang SC', serif; 
+    margin: 0; 
+    background-color: var(--bg-dark); 
+    color: #e0e0e0;
+    line-height: 1.8;
+}
+
+.container { 
+    max-width: 700px; 
+    margin: 40px auto; 
+    padding: 40px; 
+    background: #16213e; 
+    border-radius: 20px; 
+    box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+    border: 1px solid #0f3460;
+}
+
+h1 { 
+    text-align: center; 
+    font-size: 2em; 
+    letter-spacing: 4px;
+    color: #fff;
+    text-shadow: 0 0 15px rgba(255,255,255,0.3);
+}
+
+.animal-icons {
+    display: flex;
+    justify-content: space-around;
+    font-size: 2em;
+    margin-bottom: 20px;
+}
+
+input[type=text] { 
+    width: 100%; 
+    padding: 15px; 
+    background: #0f3460;
+    border: 1px solid #16213e;
+    color: #fff;
+    border-radius: 10px;
+    text-align: center;
+    font-size: 1.1em;
+}
+
+button { 
+    width: 100%; 
+    padding: 16px; 
+    margin-top: 25px; 
+    font-size: 18px; 
+    border: none; 
+    border-radius: 10px; 
+    background: linear-gradient(45deg, #0f3460, #533483); 
+    color: #fff; 
+    cursor: pointer;
+    transition: 0.3s;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+button:hover { filter: brightness(1.2); transform: translateY(-2px); }
+
+.question { 
+    margin-bottom: 40px; 
+    animation: fadeIn 0.8s ease;
+}
+
+.question b { 
+    font-size: 1.2em; 
+    display: block; 
+    margin-bottom: 20px; 
+    color: #fff;
+    border-left: 4px solid #533483;
+    padding-left: 15px;
+}
+
+label { 
+    display: block; 
+    padding: 15px 20px; 
+    margin-bottom: 12px; 
+    background: #0f3460; 
+    border-radius: 10px; 
+    cursor: pointer;
+    transition: 0.3s;
+    border: 1px solid transparent;
+}
+label:hover { background: #1a1a2e; border-color: #533483; }
+label input { margin-right: 15px; }
+
+.hidden { display: none; }
+
+.chart-wrapper { width: 100%; height: 400px; margin: 30px 0; }
+
+#resultText { 
+    background: rgba(255,255,255,0.05);
+    padding: 30px;
+    border-radius: 15px;
+    margin-top: 20px;
+}
+
+.result-header { text-align: center; margin-bottom: 30px; }
+.result-header h2 { font-size: 2.5em; margin: 10px 0; }
+
+.section-box {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.section-box h3 { color: #fff; border-bottom: 2px solid currentColor; display: inline-block; padding-bottom: 5px; }
+.section-box p { font-size: 15px; text-align: justify; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<div class="container" id="startPage">
+    <div class="animal-icons">🦁 🐯 🐨 🦉</div>
+    <h1>探寻你的灵魂原型</h1>
+    <p style="text-align: center; color: #a0a0a0; margin-bottom: 30px;">抛开世俗角色，在潜意识的森林里寻找真实的自己</p>
+    <input id="username" placeholder="输入你的契约之名">
+    <button onclick="startTest()">踏入密林</button>
+</div>
+
+<div class="container hidden" id="testPage">
+    <form id="quizForm"></form>
+    <button onclick="submitTest()">解锁封印的报告</button>
+</div>
+
+<div class="container hidden" id="resultPage">
+    <div id="resultOutput"></div>
+    <div class="chart-wrapper"><canvas id="radarChart"></canvas></div>
+    <div id="resultText"></div>
+    <button onclick="location.reload()" style="background:#333;">重新轮回</button>
+</div>
+
+<script>
+let currentUser="";
+let radarChart=null;
+let scores={lion:0,tiger:0,koala:0,owl:0};
+
+// --- 20题：专业潜意识投射题目 ---
+const questions = [
+    "你面前有一座迷雾笼罩的森林，你认为森林最深处藏着什么？",
+    "如果被邀请参加一场改变命运的晚宴，你更在意？",
+    "新闻刊登了四则爱心捐款项目，你本能最想关注哪一个？",
+    "在一场剧烈的暴风雨中，你会如何安置自己？",
+    "你获得了一枚可以预见未来三分钟的戒指，你会？",
+    "当你在旷野中看到一只受伤的幼兽，你的第一反应是？",
+    "在陌生的古堡中，你推开了一扇门，你希望门后是？",
+    "如果生命是一场博弈，你认为致胜的关键在于？",
+    "当一个你极其信任的人突然失约，你会认为？",
+    "你更愿意在哪种环境下工作或创作？",
+    "在一次紧急撤离中，除了生命，你只能带走一样东西？",
+    "你如何定义真正的‘自由’？",
+    "当你漫步在美术馆，哪种画作最能触动你？",
+    "如果可以拥有一种超能力，你会选择？",
+    "面对一个无法解开的死结（困境），你倾向于？",
+    "当你获得了一笔意外的巨大财富，你首先感受到的是？",
+    "如果生活是一部电影，你更希望扮演？",
+    "你最不能接受哪种形式的失败？",
+    "夜深人静时，你最常思考的是？",
+    "你希望多年后世人如何评价你？"
+];
+
+const options = {
+    lion: [
+        "至高无上的权力宝座", "座位的排次与话语权", "资助品学兼优的贫困大学生", "站在高处审视风暴的走向", "利用它规避决策中的关键阻力", "观察它是否还有被救助并效忠的价值", "一座奢华且由你支配的王座厅", "绝对的掌控力与威慑力", "对方没有处理好优先级的平衡", "站在落地窗前俯瞰城市的云端办公室", "象征身份与权力的印章", "不再受任何人约束的意志", "描绘宏大战争或加冕典礼的史诗画", "用意志直接干预物质世界的能力", "通过强力手段直接斩断乱麻", "掌控资源的成就感", "那个改写结局的执剑者", "由于软弱导致的错失良机", "如何让当下的蓝图更宏伟", "一个不可撼动的领袖"
+    ],
+    tiger: [
+        "未被征服的荒蛮禁地", "晚宴能否带来实质性的行动契机", "拯救处于灭绝边缘的珍稀动物", "冲进雨中感受自然的洗礼", "在突发事件中抢占先机", "激发了你的保护欲并立刻寻找处理方法", "一条通往未知领域的秘密隧道", "敏锐的直觉与爆发性的执行力", "外部客观环境发生了剧烈动荡", "充满竞争感和充满噪音的创业中心", "陪伴你征战多年的多功能工具", "随心所欲去探索边界的权力", "线条张力十足、色彩浓烈的情绪画", "瞬间移动或无穷的力量", "快速尝试各种方法直至突破", "对未来无限可能的兴奋感", "在刀尖起舞的孤胆英雄", "由于迟疑而导致的被动挨打", "下一个需要攻克的堡垒在哪", "一个无所畏惧的开拓者"
+    ],
+    koala: [
+        "一个可以永远安睡的温床", "氛围是否温馨以及他人的感受", "产后妈妈抑郁症的免费疗愈", "与亲友依偎在温暖的炉火旁", "用来避开那些会伤害情感的冲突", "温柔地抚慰它的痛苦并默默陪伴", "一间开满鲜花且阳光和煦的茶室", "温暖的协作与灵魂的共鸣", "对方可能正陷入某种难以启齿的困难", "种满绿植、有着柔软沙发的工作坊", "记录生活点滴的旧相册", "心无挂碍、灵魂安宁的状态", "色彩柔和、笔触细腻的风景画", "治愈一切创伤和痛苦的能力", "静静等待时机并寻求他人的建议", "能够与爱人分享的踏实感", "温暖每一个人的守护者", "因为冷漠而造成的关系破裂", "如何让周围的人更快乐一点", "一个灵魂有温度的挚友"
+    ],
+    owl: [
+        "记录宇宙终极真理的书籍", "席间的对话是否具备逻辑与深度", "为福利院老人免费进行白内障手术", "在书房中冷静研究暴雨的形成模型", "通过分析概率获得最优解", "冷静分析受伤原因并评估生存概率", "一座收藏了人类所有智慧的图书馆", "缜密的逻辑与对风险的精准预判", "对方的逻辑链条中出现了不可控偏差", "安静到只能听到时钟滴答声的私人书斋", "记载关键实验数据的手稿", "看透事物本质后的豁然开朗", "构图严谨、富有哲学隐喻的古典画", "全知全能、洞察时空真相的能力", "剥茧抽丝找出核心矛盾所在", "数据增长带来的安全感", "在幕后洞悉全局的智者", "由于情报不足而产生的逻辑错误", "探寻生命背后的底层逻辑", "一个智慧的先驱"
+    ]
+};
+
+function startTest(){
+    currentUser=document.getElementById("username").value;
+    if(!currentUser){alert("请留下你的名字，哪怕是代号。");return;}
+    document.getElementById("startPage").classList.add("hidden");
+    document.getElementById("testPage").classList.remove("hidden");
+    generateQuestions();
+}
+
+function generateQuestions(){
+    const form=document.getElementById("quizForm");
+    form.innerHTML="";
+    questions.forEach((q, i) => {
+        let div = document.createElement("div");
+        div.className="question";
+        div.innerHTML=`<b>${i+1}. ${q}</b>`;
+        let types = ['lion', 'tiger', 'koala', 'owl'];
+        // 随机打乱选项顺序增加专业感
+        types.sort(() => Math.random() - 0.5);
+        types.forEach(type => {
+            div.innerHTML += `<label><input type="radio" name="q${i}" value="${type}" required> ${options[type][i]}</label>`;
+        });
+        form.appendChild(div);
+    });
+}
+
+function submitTest(){
+    scores={lion:0,tiger:0,koala:0,owl:0};
+    for(let i=0;i<20;i++){
+        let ans=document.querySelector(`input[name="q${i}"]:checked`);
+        if(!ans){alert(`第 ${i+1} 道灵魂考题尚未回应。`); return;}
+        scores[ans.value]++;
+    }
+    showResult();
+}
+
+function showResult(){
+    document.getElementById("testPage").classList.add("hidden");
+    document.getElementById("resultPage").classList.remove("hidden");
+    window.scrollTo(0,0);
+
+    const maxType = Object.keys(scores).reduce((a, b) => scores[a] > scores[b] ? a : b);
+    const total = 20;
+    
+    // --- 深度解读逻辑 ---
+    const detailedReports = {
+        lion: {
+            title: "🦁 黄金狮子 · 意志的主宰者",
+            color: "#d4a017",
+            desc: `你的潜意识里流淌着扩张与秩序的血液。狮子型人格在本质上并非追求欺凌，而是追求对环境的“终极掌控”。你习惯于从宏观角度俯瞰局势，对于平庸和低效率有着本能的排斥。这种气质让你在混乱中能够迅速确立坐标，成为众人的定心丸。然而，这种强大的意志往往是一把双刃剑，它能劈开前路，也可能灼伤亲近的人。`,
+            social: `在人际关系中，你天生具有一种“重力”，人们会不自觉地围绕你旋转。但你必须意识到，这种重力有时会演变成一种令人窒息的控制欲。你眼中的“建议”在他人耳中往往是“命令”。建议你尝试“退居二线”的艺术，学会授权不仅是信任他人，更是解脱自己。真正的领袖不是那个永远握着权杖的人，而是那个能让每个人都觉得自己握着权杖的人。`,
+            advise: `深刻建议：警惕“孤岛效应”。当你在权力或事业的巅峰策马狂奔时，往往最容易忽略基座的裂痕。不要因为追求宏大的叙事而抹杀了细微的情感。每天尝试问一个下属或伙伴“你今天感觉如何”而不是“进度如何”。在情绪即将爆发时，想象你正坐在一面镜子前，狮子的怒吼虽然威慑，但静默的威严往往更具穿透力。`
+        },
+        tiger: {
+            title: "🐯 烈焰猛虎 · 边界的开拓者",
+            color: "#c0392b",
+            desc: `你是一团永不停歇的生命之火，行动是你的母语。猛虎型人格拒绝被任何现有的框架所禁锢，对于你来说，这个世界是由无数个“待打破的障碍”组成的。你拥有惊人的瞬间爆发力和直觉感悟力，在别人还在做可行性报告时，你已经身在战场。你的人生信条是：与其在等待中腐朽，不如在燃烧中碰撞。`,
+            social: `你的社交方式往往带有极强的攻击性和穿透力，这让你能瞬间打破冰封的场面，但也容易引起守旧者的防御心理。你可能经常感到周围的人“太慢”或“太胆小”，这种优越感会让你陷入孤独。建议在人际互动中加入“刹车”机制，学会在快速推进的同时，转头看看同伴是否已经掉队。`,
+            advise: `深刻建议：修剪你的焦虑。你对“静止”有着近乎病态的恐惧，认为休息就是退步。但请记住，猛虎只有在静伏时，其肌肉的爆发力才是最强的。尝试练习一种“无目的的休息”，比如冥想或徒步，不带任何产出压力。你需要明白，生命不仅是广度的覆盖，更是深度的挖掘。不要让你的执行力沦为逃避深度思考的工具。`
+        },
+        koala: {
+            title: "🐨 森林考拉 · 灵魂的修护师",
+            color: "#27ae60",
+            desc: `你是这个喧嚣世界的润滑剂，拥有治愈万物的平和磁场。考拉型人格的核心动力源自“归属感”与“和谐感”。你拥有极强的共情能力，能够敏锐地捕捉到空气中细微的情绪波动并尝试将其平息。你并不软弱，你的力量在于坚韧，像水一样，虽然无形，却能穿透最坚硬的岩石。`,
+            social: `你在群体中是公认的避风港，但这种角色的代价是，你经常为了成全他人的和谐而牺牲自己的需求。由于害怕冲突，你习惯于隐藏真实观点，这有时会让别人觉得你缺乏主见或圆滑。建议你练习“健康的冲突”，表达不同意见并不意味着破坏关系，反而能建立更深层的、基于诚实的联结。`,
+            advise: `深刻建议：建立你的“心理防火墙”。由于你对外界负面情绪几乎是全开放接收的，你极易产生“共情疲劳”。学会说“不”，不仅是拒绝一件事，更是保护你的能量不被他人过度损耗。你不需要对每个人的不快乐负责。深层次的成长建议是：找回你的“侵略性”，哪怕只有一点点。去追求一样纯粹属于你、而不必照顾任何人感受的东西。`
+        },
+        owl: {
+            title: "🦉 深空猫头鹰 · 真理的守望者",
+            color: "#2980b9",
+            desc: `你的大脑是一个精密的、永不宕机的模拟器。猫头鹰型人格活在逻辑与概率的世界里，对于你来说，混乱是暂时的，因为所有混乱背后都有尚未被揭示的数学规律。你极其推崇专业主义，对细节有着偏执的追求。你是那个在狂热人群中唯一保持冷静、并能在灾难发生前指出逻辑漏洞的人。`,
+            social: `社交对你而言有时是一场低效率的信息交换，甚至是一种折磨。你习惯用“事实”去纠正他人的“情绪”，这虽然逻辑正确，但在情感维度上却是灾难性的。建议在沟通中引入“模糊地带”，承认情感是不讲逻辑的。有时候，一个理解的眼神比一套完美的解决方案更能解决人与人之间的问题。`,
+            advise: `深刻建议：走出你的“智力象牙塔”。你容易陷入过度分析而导致的行动瘫痪。这个世界本质上是混沌且不确定的，你不可能在完全信息下做决定。尝试接受“模糊的正确”优于“精准的错误”。深层建议：去体验那些无法被逻辑化的东西——比如音乐、诗歌或突如其来的冒险。让你的感性去引导理智，而不是让理智去扼杀感性。`
+        }
+    };
+
+    const myReport = detailedReports[maxType];
+    
+    document.getElementById("resultOutput").innerHTML = `
+        <div class="result-header">
+            <p style="color:#a0a0a0">经由20重灵魂拷问，确认契约者 ${currentUser} 的本质形态为：</p>
+            <h2 style="color:${myReport.color}">${myReport.title}</h2>
+        </div>
+    `;
+
+    document.getElementById("resultText").innerHTML = `
+        <div class="section-box"><h3>核心原型描述</h3><p>${myReport.desc}</p></div>
+        <div class="section-box"><h3>人际镜像分析</h3><p>${myReport.social}</p></div>
+        <div class="section-box"><h3>灵魂进阶建议</h3><p>${myReport.advise}</p></div>
+    `;
+
+    // 绘制图表
+    if(radarChart){radarChart.destroy();}
+    radarChart = new Chart(document.getElementById("radarChart"), {
+        type: 'radar',
+        data: {
+            labels: ["掌控(狮子)", "行动(老虎)", "和谐(考拉)", "智慧(猫头鹰)"],
+            datasets: [{
+                data: [scores.lion*5, scores.tiger*5, scores.koala*5, scores.owl*5],
+                backgroundColor: 'rgba(83, 52, 131, 0.2)',
+                borderColor: '#533483',
+                pointBackgroundColor: '#e94560'
+            }]
+        },
+        options: {
+            scales: { r: { beginAtZero: true, max: 100, ticks: { display: false }, grid: { color: 'rgba(255,255,255,0.1)' } } },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+</script>
+</body>
+</html>
